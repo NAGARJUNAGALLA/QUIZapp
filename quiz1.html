@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title></title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<!-- MathJax -->
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$','$$'], ['\\[','\\]']] },
+  options: { renderActions: { addMenu: [] } },
+  startup: { typeset: false }
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
+<style>
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.quiz-container {
+  position: absolute;
+  top: -40px;
+  bottom: 20px;
+  left: -10px;
+  right: 0;
+  overflow-y: auto;
+  background: #fff;
+  height:80vh;
+}
+
+/* HEADER */
+.quiz-header {
+  background-color: #1b4332;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  font-weight: 600;
+  font-size: 18px;
+  position: fixed;
+  top: 0;
+  left:0;
+  right:0;
+  z-index: 10;
+}
+
+/* BODY */
+.quiz-body {
+  flex: 1;
+  padding: 20px 20px 10px;
+  overflow-y:auto;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  color: #333;
+  font-weight: 500;
+}
+
+/* Toggle button */
+.toggle-nav-btn {
+  display: block;
+  width: 100%;
+  background: #1b4332;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+.toggle-nav-btn:hover {
+  background: #14532d;
+}
+
+/* Question navigation */
+.question-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 15px;
+  overflow: hidden;
+  max-height: 150px;
+  transition: max-height 0.3s ease;
+  overflow-y:auto;
+}
+.question-nav.hidden {
+  max-height: 0;
+  margin: 0;
+}
+
+/* Buttons */
+.question-nav button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #ccc;
+  background: #f5f5f5;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.question-nav button.active {
+  border: 2px solid #1b4332;
+}
+.question-nav button.answered {
+  background: #1b4332;
+  color: #fff;
+}
+
+#question-container h4 { font-size: 16px; margin-bottom: 8px; color: #333; }
+#question-container p { font-size: 15px; color: #444; }
+
+.options label {
+  display: block;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.options label:hover { border-color: #1e3a8a; background: #f0f4ff; }
+.correct { border-color: green !important; background: #e8fce8 !important; }
+.wrong { border-color: red !important; background: #ffe8e8 !important; }
+
+/* FOOTER */
+.quiz-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right:0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  background-color: #1b4332;
+  background-image: 
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  border-top: 1px solid #ddd;
+  padding: 10px;
+  box-shadow: 0 -2px 8px rgba(0,0,0,0.1);
+}
+.quiz-footer button {
+  flex: 1;
+  background:white;
+  color: #1b4332;
+  border: none;
+  padding: 10px;
+  border-radius: 25px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: 0.3s;
+  margin: 0 5px;
+}
+.quiz-footer button:hover { background: white; }
+
+/* RESULTS */
+#result-section {
+  background: #f9f9f9;
+  border-top: 2px solid #1e3a8a;
+  padding: 15px;
+  margin-top: 20px;
+  border-radius: 10px;
+}
+#result-section h3 { color: #1e3a8a; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+
+<!-- USER INFO FORM -->
+<div id="user-form" style="text-align:center; margin-top:80px;">
+  <h3></h3>
+  <input type="text" id="userName" placeholder="Enter your Full name" required
+         style="padding:10px; width:80%; max-width:300px; border-radius:8px; border:1px solid #ccc;">
+  <br><br>
+  <button onclick="startQuiz()" 
+          style="background:#1b4332; color:white; padding:10px 20px; border:none; border-radius:8px;">
+    Start Quiz
+  </button>
+</div>
+
+<!-- QUIZ AREA -->
+<div id="quiz-area" style="display:none;">
+<div class="quiz-container">
+
+  <div class="quiz-header">
+    <div id="quiz-title">Probability</div>
+    <div>⏱️ <span id="timer"></span></div>
+    <i class="fa-solid fa-expand full-icon" title="Fullscreen" onclick="toggleFullscreen()"></i>
+  </div>
+
+  <div class="quiz-body">
+    <div class="stats">
+      <span id="answered">Answered: 0</span>
+      <span id="not-answered">Not answered: 0</span>
+    </div>
+
+    <button class="toggle-nav-btn" onclick="toggleNav()">🔽 Show/Hide Numbers</button>
+    <div class="question-nav" id="question-nav"></div>
+    <h3 id="quiz-title"></h3>
+    <div id="question-container"></div>
+    <div id="result-section" class="hidden"></div>
+  </div>
+
+  <div class="quiz-footer">
+    <button onclick="prevQuestion()">Previous</button>
+    <button onclick="submitQuiz()">Submit</button>
+    <button onclick="nextQuestion()">Next</button>
+  </div>
+</div>
+</div>
+
+<script>
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykBUkWcGjCh4SJR3VExsr8hm6UO3pg6-tp3tx4YWeI0_r2EkhVsos3YtVVHOlZVgHdJg/exec";
+const QUIZ_TITLE = " Probability";
+const questions = [
+  { "q": "What is the probability of getting a head when a coin is tossed?", "options": ["0", "1", "1/2", "1/4"], "answerId": 2 },
+
+  { "q": "An event which cannot happen is called:", "options": ["Certain event", "Sure event", "Impossible event", "Complementary event"], "answerId": 2 },
+
+  { "q": "Probability always lies between:", "options": ["-1 and 1", "0 and 2", "0 and 1", "-2 and 2"], "answerId": 2 },
+
+  { "q": "Total outcomes when a die is rolled:", "options": ["4", "5", "6", "7"], "answerId": 2 },
+
+  { "q": "P(E) + P(not E) =", "options": ["0", "1", "2", "3"], "answerId": 1 },
+
+  { "q": "Probability of getting an even number on a die:", "options": ["1/6", "1/3", "1/2", "2/3"], "answerId": 2 },
+
+  { "q": "An experiment is:", "options": ["Always predictable", "Has unknown result", "Same result always", "Not possible"], "answerId": 1 },
+
+  { "q": "Which is an outcome of tossing a coin?", "options": ["2", "3", "Head", "6"], "answerId": 2 },
+
+  { "q": "Total outcomes when 2 coins are tossed:", "options": ["2", "3", "4", "6"], "answerId": 2 },
+
+  { "q": "Probability of getting a number greater than 4 on a die:", "options": ["1/6", "2/6", "3/6", "4/6"], "answerId": 1 },
+
+  { "q": "Experimental probability depends on:", "options": ["Total outcomes", "Number of trials", "Both A & B", "None"], "answerId": 1 },
+
+  { "q": "A coin is tossed 20 times and shows 8 heads. P(head) =", "options": ["8/20", "8/10", "20/8", "1/2"], "answerId": 0 },
+
+  { "q": "P(E) = 0 means event is:", "options": ["Sure", "Impossible", "Certain", "Likely"], "answerId": 1 },
+
+  { "q": "P(E) = 1 means event is:", "options": ["Sure", "Impossible", "Sometimes happens", "Never happens"], "answerId": 0 },
+
+  { "q": "Probability of getting a tail when tossing a coin:", "options": ["0", "1", "1/2", "2/3"], "answerId": 2 },
+
+  { "q": "Sample space for a die contains:", "options": ["3 elements", "4 elements", "5 elements", "6 elements"], "answerId": 3 },
+
+  { "q": "Getting number 7 on a die is:", "options": ["Certain", "Impossible", "Possible", "Likely"], "answerId": 1 },
+
+  { "q": "The sum of probabilities of all outcomes =", "options": ["0", "1", "2", "3"], "answerId": 1 },
+
+  { "q": "If P(E) = 0.4, P(not E) =", "options": ["0.4", "0.6", "0.5", "1.4"], "answerId": 1 },
+
+  { "q": "If an event is equally likely, the probability is:", "options": ["Always 1", "Always 0", "Between 0 and 1", "Negative"], "answerId": 2 },
+
+  { "q": "Favourable outcomes for getting 2 on a die:", "options": ["1", "2", "3", "4"], "answerId": 0 },
+
+  { "q": "In a bag with 3 red and 2 blue balls, P(red) =", "options": ["1/5", "2/5", "3/5", "4/5"], "answerId": 2 },
+
+  { "q": "Sample space of tossing 2 coins:", "options": ["{H}", "{HH, HT, TH, TT}", "{Head, Tail}", "{1,2,3}"], "answerId": 1 },
+
+  { "q": "Probability 1 represents:", "options": ["Impossible", "Sure event", "Unlikely", "None"], "answerId": 1 },
+
+  { "q": "0.5 is same as:", "options": ["1/3", "1/2", "1/4", "2/3"], "answerId": 1 },
+
+  { "q": "P(E) = n(E)/n(S) is:", "options": ["Experimental probability", "Theoretical probability", "Frequency", "Mean"], "answerId": 1 },
+
+  { "q": "Number of outcomes when 3 coins are tossed:", "options": ["4", "6", "8", "12"], "answerId": 2 },
+
+  { "q": "Probability of getting a prime number on a die:", "options": ["1/6", "2/6", "3/6", "4/6"], "answerId": 2 },
+
+  { "q": "Prime numbers on a die:", "options": ["1,2", "2,3,5", "1,3,5", "1,2,3"], "answerId": 1 },
+
+  { "q": "Probability of drawing a king from cards:", "options": ["1/13", "1/52", "4/52", "2/13"], "answerId": 0 },
+
+  { "q": "Probability of getting a spade:", "options": ["1/4", "1/13", "13/52", "Both A & C"], "answerId": 3 },
+
+  { "q": "Probability of getting a number < 3 on a die:", "options": ["1/6", "2/6", "3/6", "4/6"], "answerId": 1 },
+
+  { "q": "Complement of event E is:", "options": ["1 + E", "1 - P(E)", "E - 1", "1/E"], "answerId": 1 },
+
+  { "q": "P(E) + P(E') =", "options": ["0", "1", "2", "3"], "answerId": 1 },
+
+  { "q": "Total outcomes when 2 dice are rolled:", "options": ["12", "18", "24", "36"], "answerId": 3 },
+
+  { "q": "Probability of sum = 7 with 2 dice:", "options": ["1/6", "1/36", "6/36", "2/36"], "answerId": 2 },
+
+  { "q": "Probability of drawing a red card:", "options": ["1/52", "13/52", "26/52", "39/52"], "answerId": 2 },
+
+  { "q": "Probability of drawing a face card:", "options": ["3/52", "12/52", "1/4", "Both B & C"], "answerId": 3 },
+
+  { "q": "P(E) = 0.25 means event is:", "options": ["Sure", "Impossible", "Not likely", "Certain"], "answerId": 2 },
+
+  { "q": "Probability of impossible event:", "options": ["1", "0", "1/2", "2"], "answerId": 1 },
+
+  { "q": "If P(E)=0.64, P(E')=", "options": ["0.36", "0.46", "0.74", "0.84"], "answerId": 0 },
+
+  { "q": "Composite numbers on a die:", "options": ["2,3", "4,6", "1,3,5", "4,6,8"], "answerId": 1 },
+
+  { "q": "A bag has 5 red, 3 blue, 2 green balls. P(green) =", "options": ["1/5", "2/10", "2/12", "2/15"], "answerId": 2 },
+
+  { "q": "Probability cannot be:", "options": ["0", "1", "Greater than 1", "Fraction"], "answerId": 2 },
+
+  { "q": "A coin is tossed. P(not getting tail):", "options": ["0", "1", "1/2", "1/3"], "answerId": 2 },
+
+  { "q": "Probability of drawing a queen:", "options": ["2/52", "3/52", "4/52", "1/13"], "answerId": 3 },
+
+  { "q": "Pick a number 1–10. Probability of even number:", "options": ["1/10", "2/10", "5/10", "9/10"], "answerId": 2 },
+
+  { "q": "Pick from 1–100. Probability divisible by 5:", "options": ["10/100", "20/100", "25/100", "30/100"], "answerId": 1 },
+
+  { "q": "Coin tossed 100 times shows 55 tails. P(tail) =", "options": ["55", "55/100", "45/100", "1/2"], "answerId": 1 }
+
+
+];
+
+let current=0,answers=Array(questions.length).fill(null),submitted=false;
+let timeLeft=questions.length*60,timerInterval;
+
+function startQuiz(){
+  const name=document.getElementById("userName").value.trim();
+  if(!name){alert("Please enter your name first.");return;}
+  document.getElementById("user-form").style.display="none";
+  document.getElementById("quiz-area").style.display="block";
+  renderNav();renderQuestion();startTimer();
+}
+
+function toggleNav(){document.getElementById("question-nav").classList.toggle("hidden");}
+function renderNav(){
+  const nav=document.getElementById("question-nav");nav.innerHTML="";
+  questions.forEach((_,i)=>{
+    const b=document.createElement("button");
+    b.textContent=i+1;
+    b.className=(i===current?"active ":"")+(answers[i]!=null?"answered":"");
+    b.onclick=()=>{current=i;renderQuestion()};
+    nav.appendChild(b);
+  });updateStats();
+}
+function renderQuestion(){
+  const q=questions[current];
+  const c=document.getElementById("question-container");
+  let h=`<h4>Question ${current+1} of ${questions.length}</h4><p>${q.q}</p><div class="options">`;
+  q.options.forEach((o,i)=>{
+    let cls="";
+    if(submitted){
+      if(i===q.answerId) cls="correct";
+      else if(answers[current]===i && i!==q.answerId) cls="wrong";
+    }
+    h+=`<label class="${cls}"><input type="radio" name="opt" value="${i}" ${answers[current]===i?'checked':''} ${submitted?'disabled':''} onchange="selectOpt(${i})">${o}</label>`;
+  });
+  h+="</div>";c.innerHTML=h;renderNav();
+  if(window.MathJax&&MathJax.typesetPromise) MathJax.typesetPromise([c]);
+}
+function selectOpt(i){if(submitted)return;answers[current]=i;renderNav();}
+function nextQuestion(){if(current<questions.length-1){current++;renderQuestion();}}
+function prevQuestion(){if(current>0){current--;renderQuestion();}}
+function updateStats(){
+  const a=answers.filter(x=>x!==null).length;
+  document.getElementById("answered").textContent="Answered: "+a;
+  document.getElementById("not-answered").textContent="Not answered: "+(questions.length-a);
+}
+function startTimer(){
+  updateTimer();timerInterval=setInterval(()=>{timeLeft--;updateTimer();if(timeLeft<=0){clearInterval(timerInterval);submitQuiz();}},1000);
+}
+function updateTimer(){
+  const m=Math.floor(timeLeft/60),s=timeLeft%60;
+  document.getElementById("timer").textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+async function submitQuiz(){
+  if(submitted)return;submitted=true;clearInterval(timerInterval);
+  let correct=0,wrong=0;
+  questions.forEach((q,i)=>{if(answers[i]!=null){if(answers[i]===q.answerId)correct++;else wrong++;}});
+  const skipped=questions.length-(correct+wrong);
+  const total=questions.length;
+  const score=Math.round((correct/total)*100);
+  const name=document.getElementById("userName").value;
+  const payload = { quizTitle: QUIZ_TITLE, name, score, correct, wrong, skipped, total };
+
+  // Send data to Google Sheets
+  try {
+    await fetch(GOOGLE_SCRIPT_URL,{
+      method:"POST",
+      mode:"no-cors",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
+    });
+  } catch(e){console.error("Error sending data",e);}
+
+  const html=`<h3>Result Summary</h3>
+    <p><b>Name:</b> ${name}</p>
+    <p><b>Total Questions:</b> ${total}</p>
+    <p><b>Correct:</b> ${correct}</p>
+    <p><b>Wrong:</b> ${wrong}</p>
+    <p><b>Skipped:</b> ${skipped}</p>
+    <p><b>Score:</b> ${score}%</p>`;
+  document.getElementById("result-section").innerHTML=html;
+  document.getElementById("result-section").classList.remove("hidden");
+  renderQuestion();
+}
+
+// Fullscreen toggle
+function toggleFullscreen(){
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen().catch(err=>alert(err.message));
+  } else {
+    document.exitFullscreen();
+  }
+}
+</script>
+
+</body>
+</html>
