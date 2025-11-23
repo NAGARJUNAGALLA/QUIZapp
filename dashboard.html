@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dashboard</title>
+<meta charset="UTF-8"/>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body onload="checkLogin()">
+
+<div class="dashboard-title">Dashboard</div>
+
+<div style="text-align:center;">
+  <button onclick="logout()" style="width:120px;background:#ff4757;">Logout</button>
+</div>
+
+<div class="block-list">
+
+  <div class="block" onclick="openQuiz('quiz1.html')">
+    Light Quiz <span class="arrow">›</span>
+  </div>
+
+  <div class="block" onclick="openQuiz('quiz2.html')">
+    Heat Quiz <span class="arrow">›</span>
+  </div>
+
+  <div class="block" onclick="openQuiz('quiz.html')">
+    Main Quiz <span class="arrow">›</span>
+  </div>
+
+  <div class="block" onclick="openQuiz('physics.html')">
+    Physics Test <span class="arrow">›</span>
+  </div>
+
+</div>
+
+<script src="scripts.js"></script>
+</body>
+</html>
