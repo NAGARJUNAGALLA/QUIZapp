@@ -1,23 +1,1249 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Login</title>
-<meta charset="UTF-8"/>
-<link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0,maximum-scale=1.0, user-scalable=no">
+    <title>JCV STUDY HUB - Secure Portal</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+    window.MathJax = {
+      options: { enableMenu: false },
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']], processEscapes: true },
+      startup: { pageReady: () => { return MathJax.startup.defaultPageReady().then(() => { const content = document.getElementById('quiz-content'); if (content && typeof MathJax.typesetPromise === 'function') { MathJax.typesetPromise([content]); } }); } }
+    };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        :root {
+            /* Modern UI Color Palette */
+            --primary: #2563eb;       
+            --primary-hover: #1d4ed8;
+            --bg-color: #f3f4f6;      
+            --card-bg: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --border-color: #e5e7eb;
+            --correct-bg: #ecfdf5;
+            --correct-border: #10b981;
+            --wrong-bg: #fef2f2;
+            --wrong-border: #ef4444;
+            --doc-color: #3b82f6; 
+            
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --shadow-sm: 0 4px 6px rgba(0,0,0,0.05);
+            --shadow-md: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+
+        * { box-sizing: border-box; }
+
+        body { 
+            margin: 0; padding-bottom: 90px; background: var(--bg-color); 
+            color: var(--text-main); font-family: 'Inter', sans-serif;
+            -webkit-user-select: none; -ms-user-select: none; user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ====================================================
+           AUTH UI (Login / Register / Forgot)
+           ==================================================== */
+        .auth-wrapper { display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; background: var(--bg-color); }
+        .auth-container { background: var(--card-bg); padding: 30px 40px; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); width: 100%; max-width: 400px; }
+        .auth-container h2 { text-align: center; color: var(--primary); font-family: 'Poppins', sans-serif; margin-top: 0; margin-bottom: 25px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 0.9rem; font-weight: 500; }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1rem; transition: border-color 0.2s; }
+        .form-group input:focus { border-color: var(--primary); outline: none; }
+        .form-group input:disabled, .auth-btn:disabled { background-color: #f9fafb; cursor: not-allowed; opacity: 0.7; }
+        
+        .captcha-container { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px dashed var(--border-color); }
+        .captcha-text { font-size: 22px; font-weight: bold; letter-spacing: 4px; font-family: 'Courier New', Courier, monospace; text-decoration: line-through; color: #4b5563; }
+        .captcha-refresh { color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: 500; }
+        
+        .auth-btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600; margin-top: 10px; transition: background 0.2s; }
+        .auth-btn:hover:not(:disabled) { background: var(--primary-hover); }
+        
+        .auth-links { text-align: center; margin-top: 20px; font-size: 0.9rem; }
+        .auth-links a { color: var(--primary); text-decoration: none; cursor: pointer; font-weight: 500; transition: opacity 0.2s; }
+        .auth-links a:hover { text-decoration: underline; }
+        .hidden { display: none !important; }
+        
+        .error { color: var(--wrong-border); font-size: 0.85rem; margin-top: 6px; display: none; }
+        .status-msg { font-size: 0.95rem; margin-top: 15px; text-align: center; display: none; font-weight: 500; padding: 10px; border-radius: 8px; }
+        .status-success { background: var(--correct-bg); color: var(--correct-border); border: 1px solid #a7f3d0; }
+        .status-error { background: var(--wrong-bg); color: var(--wrong-border); border: 1px solid #fecaca; }
+        .status-loading { background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe; }
+
+        /* ====================================================
+           APP UI (Portal Header & Navigation)
+           ==================================================== */
+        header { background: var(--primary); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; box-shadow: var(--shadow-sm); }
+        .header-title { font-size: 1.25rem; font-weight: 600; font-family: 'Poppins', sans-serif; display: flex; align-items: center; gap: 10px;}
+        .logout-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.2s; font-size: 0.9rem;}
+        .logout-btn:hover { background: rgba(255,255,255,0.3); }
+
+        .timer-badge { background: rgba(255, 255, 255, 0.2); padding: 6px 16px; border-radius: 20px; font-weight: 600; font-size: 0.95rem; display: none; }
+        .hamburger { font-size: 1.8rem; background: none; border: none; color: white; cursor: pointer; display: none; transition: transform 0.2s; }
+        .hamburger:active { transform: scale(0.9); }
+
+        #nav-drawer { position: fixed; top: 60px; right: -320px; width: 300px; height: calc(100% - 60px); background: var(--card-bg); box-shadow: -5px 0 25px rgba(0,0,0,0.1); transition: right 0.3s ease; z-index: 99; padding: 24px; overflow-y: auto; }
+        #nav-drawer.open { right: 0; }
+        .nav-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 20px; }
+        .nav-item { width: 40px; height: 40px; border-radius: 8px; border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease; color: var(--text-muted); }
+        .nav-item:hover { border-color: var(--primary); color: var(--primary); }
+        .nav-item.current { background: var(--primary); color: white; border-color: var(--primary); }
+        .nav-item.attempted { background: var(--correct-border); color: white; border-color: var(--correct-border); }
+        .nav-item.viewed-unanswered { background: var(--wrong-border); color: white; border-color: var(--wrong-border); }
+
+        .container { padding: 30px 20px; max-width: 800px; margin: 0 auto; min-height: 75vh; animation: fadeIn 0.4s ease-out; position: relative; z-index: 10;}
+        #quiz-app-container, #content-view { background: var(--card-bg); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); margin-top: 20px; border: 1px solid var(--border-color); }
+        #content-view { padding: 30px 40px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Lists & Cards --- */
+        .page-header { margin-bottom: 25px; }
+        .page-title { color: var(--text-main); font-size: 1.6rem; margin: 0 0 5px 0; font-weight: 600; font-family: 'Poppins', sans-serif; }
+        .subtitle { color: var(--text-muted); font-size: 0.95rem; margin: 0; }
+
+        .list-container { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        .list-btn {
+            background: var(--card-bg); color: var(--text-main); padding: 20px 24px; text-align: left;
+            border-radius: 12px; cursor: pointer; font-size: 1.15rem; font-weight: 600;
+            border: 1px solid var(--border-color); width: 100%; box-shadow: var(--shadow-sm); transition: all 0.2s;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .list-btn::after { content: '➔'; font-size: 1.2rem; color: var(--primary); opacity: 0.8; transition: transform 0.2s; }
+        .list-btn:hover { border-color: var(--primary); background: #f8fafc; transform: translateX(4px); }
+
+        .back-btn { background: none; border: none; color: var(--text-muted); font-weight: 500; font-size: 0.95rem; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; margin-bottom: 20px; padding: 0; transition: color 0.2s; }
+        .back-btn:hover { color: var(--primary); }
+
+        /* --- Test & Material Tiles --- */
+        .test-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 30px; }
+        .test-card, .tile {
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px;
+            padding: 16px 20px; display: flex; align-items: center; gap: 16px; transition: all 0.2s ease; box-shadow: 0 1px 2px rgba(0,0,0,0.03); cursor: pointer;
+        }
+        .test-card:hover, .tile:hover { background: #f8fafc; transform: translateX(4px); border-color: #d1d5db; }
+        .test-icon, .doc-icon { display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 1.8rem; }
+        .doc-icon svg { width: 32px; height: 32px; fill: var(--doc-color); }
+        .test-content, .tile-title { flex-grow: 1; }
+        .test-title, .tile-title { font-size: 1.1rem; font-weight: 500; color: var(--text-main); margin: 0; }
+        .test-title { margin-bottom: 6px; }
+        .tile-chevron { color: #9ca3af; display: flex; align-items: center; }
+        .test-meta { display: flex; align-items: center; gap: 12px; color: var(--text-muted); font-size: 0.85rem; }
+        .meta-item { display: flex; align-items: center; gap: 4px; }
+        .test-action { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+
+        .take-test-btn, .btn { background: var(--card-bg); color: var(--text-main); border: 1px solid #d1d5db; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 0.9rem; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit;}
+        .take-test-btn:hover:not(:disabled), .btn:hover { background: #f9fafb; }
+        .take-test-btn.primary-action, .btn-primary { background: var(--primary); color: white; border: none; }
+        .take-test-btn.primary-action:hover:not(:disabled), .btn-primary:hover { background: var(--primary-hover); }
+        .take-test-btn:disabled { background: #f3f4f6; color: #9ca3af; cursor: not-allowed; border-color: #e5e7eb; }
+        .score-display { color: var(--correct-border); font-weight: 600; font-size: 0.85rem; background: var(--correct-bg); padding: 2px 8px; border-radius: 4px; }
+
+        .bottom-actions { position: relative; z-index: 10; border-top: 1px solid var(--border-color); padding-top: 25px; margin-top: 10px; display: flex; justify-content: center; }
+        .bottom-actions .btn { width: 100%; max-width: 300px; padding: 12px 24px; font-weight: 600; }
+
+        /* --- Document Reading View & Breadcrumbs --- */
+        .breadcrumb { font-size: 0.95em; margin-bottom: 30px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        .breadcrumb-link { color: var(--primary); cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+        .breadcrumb-link:hover { text-decoration: underline; }
+        .topic-section { margin-bottom: 40px; }
+        .topic-section h3 { color: var(--text-main); font-size: 1.3em; font-weight: 600; margin-bottom: 15px; }
+        .content-body { color: #374151; font-size: 1.05em; white-space: pre-wrap; text-align: justify; line-height: 1.7; }
+        .content-body ul { padding-left: 20px; white-space: normal; margin-top: 10px; }
+        .content-body ul li { margin-bottom: 8px; }
+        .content-body table { width: 100%; border-collapse: collapse; margin: 20px 0; white-space: normal; }
+        .content-body table th, .content-body table td { padding: 12px; border: 1px solid var(--border-color); text-align: left; }
+        .content-body table th { background-color: #f9fafb; font-weight: 600; }
+
+        /* --- Universal Loader & Quotes --- */
+        .loader { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; color: var(--text-muted); font-weight: 500; }
+        .spinner { width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top: 3px solid var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .quote-card { background: white; border-radius: 16px; padding: 40px 30px; text-align: center; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color); animation: fadeIn 0.5s ease-out; }
+        .quote-icon { font-size: 2.5rem; margin-bottom: 15px; display: block; }
+        .quote-text { font-size: 1.2rem; font-style: italic; color: var(--primary); font-weight: 500; line-height: 1.6; }
+
+        /* --- App Watermark --- */
+        .watermark { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 6vw; font-weight: 800; color: rgba(37, 99, 235, 0.03); pointer-events: none; z-index: 1; white-space: nowrap; letter-spacing: 5px; text-transform: uppercase; display: none; }
+
+        /* --- Instructions & Quiz --- */
+        .instructions-card { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px; margin-bottom: 25px; color: #1e40af; box-shadow: var(--shadow-sm); }
+        .instructions-card h3 { margin-top: 0; margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+        .instructions-card ul { margin: 0; padding-left: 20px; font-size: 0.95rem; line-height: 1.7; color: #1e3a8a; }
+        .instructions-card b { color: var(--primary); }
+        .terms-container { margin-bottom: 25px; padding: 16px; background: white; border: 1px solid var(--border-color); border-radius: 10px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); }
+        .terms-checkbox { width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary); }
+        .terms-label { cursor: pointer; font-size: 0.95rem; color: var(--text-main); user-select: none; font-weight: 500; }
+
+        #quiz-title { color: var(--text-main); font-size: 1.2rem; font-weight: 600; margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+        .question-text { font-size: 1.15rem; font-weight: 500; margin-bottom: 25px; color: var(--text-main); line-height: 1.6; }
+        .question-text strong { color: var(--primary); margin-right: 8px; }
+        .options-list { display: flex; flex-direction: column; gap: 12px; }
+        .option-card { display: flex; align-items: center; border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: all 0.2s ease; background: white; font-size: 1rem; color: #374151; }
+        .option-card:hover:not(.disabled) { border-color: #d1d5db; background: #f8fafc; }
+        .option-badge { background-color: #f3f4f6; color: var(--text-muted); font-weight: 600; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-right: 15px; flex-shrink: 0; transition: all 0.2s; font-size: 0.9rem; }
+        
+        .option-card.selected { border-color: var(--primary); background-color: #eff6ff; }
+        .option-card.selected .option-badge { background-color: var(--primary); color: white; }
+        .option-card.correct-answer { border-color: var(--correct-border) !important; background-color: var(--correct-bg) !important; }
+        .option-card.correct-answer .option-badge { background-color: var(--correct-border); color: white; }
+        .option-card.wrong-selected { border-color: var(--wrong-border) !important; background-color: var(--wrong-bg) !important; }
+        .option-card.wrong-selected .option-badge { background-color: var(--wrong-border); color: white; }
+
+        #score-card { display: none; margin-top: 30px; padding: 30px; background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-main); border-radius: var(--radius-md); text-align: center; animation: fadeIn 0.4s ease-out; }
+        #score-card h2 { margin-top: 0; font-size: 1.5rem; font-weight: 600; }
+        .score-buttons { display: flex; gap: 12px; justify-content: center; margin-top: 25px; flex-wrap: wrap;}
+
+        footer { position: fixed; bottom: 0; left: 0; width: 100%; background: white; padding: 12px 20px; display: none; justify-content: space-between; border-top: 1px solid var(--border-color); z-index: 90; }
+        .nav-btn { background-color: white; color: var(--text-main); border: 1px solid #d1d5db; padding: 10px 24px; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+        .nav-btn:hover:not(:disabled) { background: #f9fafb; }
+        .nav-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #next-btn, #prev-btn { background-color: var(--primary); color: white; border: none; }
+        #next-btn:hover, #prev-btn:hover { background-color: var(--primary-hover); }
+
+        /* --- Print Modal & Logic --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(17, 24, 39, 0.6); backdrop-filter: blur(2px); z-index: 10000; display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 16px; width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-height: 80vh; display: flex; flex-direction: column; }
+        .modal-content h3 { margin-top: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; font-size: 1.2em; }
+        .checkbox-list { overflow-y: auto; margin: 15px 0; display: flex; flex-direction: column; gap: 12px; }
+        .checkbox-item { display: flex; align-items: center; gap: 10px; font-size: 1.05em; cursor: pointer; color: #374151; }
+        .checkbox-item input { width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary); }
+        .select-all-container { background: #f3f4f6; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-weight: 600; color: var(--text-main); }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+        .modal-actions .btn { width: auto; padding: 10px 16px;}
+
+        #print-container { display: none; }
+
+        @media print {
+            @page { size: A4 portrait; margin: 20mm 20mm 25mm 20mm; }
+            body { background: white; padding: 0; margin: 0; color: #000; -webkit-user-select: auto; user-select: auto; font-family: 'Georgia', 'Times New Roman', serif; }
+            #auth-wrapper, header, .container, #print-modal, footer { display: none !important; }
+            #print-container { display: block !important; position: relative; z-index: 10; }
+            .watermark { display: block !important; font-size: 60pt; color: rgba(0, 0, 0, 0.04) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; z-index: 9999; font-family: sans-serif; }
+            .print-lesson { page-break-before: always; }
+            .print-lesson:first-child { page-break-before: auto; }
+            .print-lesson h2 { font-size: 26pt; text-align: center; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 20px 0; margin-top: 0; margin-bottom: 35px; color: #000; text-transform: uppercase; letter-spacing: 2px; page-break-after: avoid; }
+            .print-topic { margin-bottom: 30px; }
+            .print-topic h3 { font-size: 15pt; margin-bottom: 15px; color: #111; font-style: italic; border-bottom: 1px dashed #ccc; padding-bottom: 5px; page-break-after: avoid; }
+            .print-content { font-size: 11pt; line-height: 1.6; white-space: pre-wrap; text-align: justify; }
+            table { page-break-inside: avoid; border-collapse: collapse; width: 100%; margin: 20px 0; font-size: 10pt; }
+            th, td { border: 1px solid #333; padding: 10px; text-align: left; }
+            th { background-color: #f4f4f4 !important; -webkit-print-color-adjust: exact; }
+            tr { page-break-inside: avoid; page-break-after: auto; }
+            ul, ol { padding-left: 25px; margin-top: 10px; margin-bottom: 10px; }
+            li { margin-bottom: 6px; }
+        }
+
+        /* --- Bottom Tab Navigation --- */
+        #bottom-tab-bar {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            border-top: 1px solid var(--border-color);
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.03);
+            z-index: 95;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .tab-btn {
+            flex: 1; background: none; border: none;
+            padding: 12px 10px; display: flex; flex-direction: column;
+            align-items: center; gap: 6px; color: var(--text-muted);
+            font-size: 0.85rem; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; font-family: inherit;
+        }
+        .tab-btn.active {
+            color: var(--primary);
+        }
+        .tab-btn.active .tab-icon {
+            transform: translateY(-2px);
+        }
+        .tab-btn:hover:not(.active) { color: var(--text-main); }
+        .tab-icon { font-size: 1.5rem; transition: transform 0.2s; }
+
+        @media (max-width: 600px) {
+            .auth-container { padding: 25px 20px; }
+            .container { padding: 20px 15px; }
+            #content-view { padding: 20px; }
+            .test-card { flex-direction: column; align-items: flex-start; gap: 12px; padding: 15px; }
+            .test-action { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border-color); padding-top: 12px; }
+            .score-buttons { flex-direction: column; }
+            .nav-btn { padding: 10px 16px; }
+            .watermark { font-size: 10vw; }
+        }
+    </style>
 </head>
 <body>
 
-<div class="container">
-  <h2 style="text-align:center;color:#1E90FF;">Welcome</h2>
+    <div class="watermark" id="app-watermark">STUDY MATERIAL</div>
 
-  <input id="username" placeholder="Username">
-  <input id="password" type="password" placeholder="Password">
+    <div id="auth-wrapper" class="auth-wrapper">
+        <div class="auth-container">
+            
+            <div id="loginSection">
+                <h2>Welcome Back</h2>
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>Mobile Number</label>
+                        <input type="tel" id="loginMobile" required placeholder="Enter your mobile">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" required placeholder="Enter your password">
+                    </div>
+                    
+                    <label style="display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">Security Check</label>
+                    <div class="captcha-container">
+                        <span class="captcha-text" id="loginCaptchaDisplay"></span>
+                        <a href="#" class="captcha-refresh" id="loginCaptchaRefresh" onclick="generateCaptcha('loginCaptchaDisplay'); return false;">🔄 Refresh</a>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="loginCaptchaInput" placeholder="Type the code above" required>
+                        <div id="loginError" class="error">Invalid Captcha code!</div>
+                    </div>
 
-  <button onclick="login()">Login</button>
+                    <button type="submit" class="auth-btn" id="loginBtn">Secure Login</button>
+                    <div id="loginStatus" class="status-msg"></div>
 
-  <div id="error"></div>
-</div>
+                    <div class="auth-links">
+                        <a onclick="showAuthSection('forgotSection')">Forgot password?</a> | 
+                        <a onclick="showAuthSection('registerSection')">Create Account</a>
+                    </div>
+                </form>
+            </div>
 
-<script src="scripts.js"></script>
+            <div id="registerSection" class="hidden">
+                <h2>Registration</h2>
+                <form id="registerForm" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="regName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Mobile Number</label>
+                        <input type="tel" id="regMobile" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="regMail" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Create Password</label>
+                        <input type="password" id="regPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="regPasswordConfirm" required>
+                        <div id="regPassError" class="error">Passwords do not match!</div>
+                    </div>
+                    
+                    <label style="display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">Security Check</label>
+                    <div class="captcha-container">
+                        <span class="captcha-text" id="regCaptchaDisplay"></span>
+                        <a href="#" class="captcha-refresh" id="regCaptchaRefresh" onclick="generateCaptcha('regCaptchaDisplay'); return false;">🔄 Refresh</a>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="regCaptchaInput" placeholder="Type the code above" required>
+                        <div id="regCaptchaError" class="error">Invalid Captcha code!</div>
+                    </div>
+
+                    <button type="submit" class="auth-btn" id="regBtn">Register Now</button>
+                    <div id="regStatus" class="status-msg"></div>
+
+                    <div class="auth-links">
+                        <a onclick="showAuthSection('loginSection')">← Back to Login</a>
+                    </div>
+                </form>
+            </div>
+
+            <div id="forgotSection" class="hidden">
+                <h2>Reset Password</h2>
+                <form id="forgotForm" onsubmit="handleForgot(event)">
+                    <div class="form-group">
+                        <label>Registered Mobile Number</label>
+                        <input type="tel" id="forgotMobile" required>
+                    </div>
+                    <div class="form-group">
+                        <label>New Password</label>
+                        <input type="password" id="forgotPassword" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm New Password</label>
+                        <input type="password" id="forgotPasswordConfirm" required>
+                        <div id="forgotPassError" class="error">Passwords do not match!</div>
+                    </div>
+                    
+                    <label style="display: block; margin-bottom: 6px; color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">Security Check</label>
+                    <div class="captcha-container">
+                        <span class="captcha-text" id="forgotCaptchaDisplay"></span>
+                        <a href="#" class="captcha-refresh" id="forgotCaptchaRefresh" onclick="generateCaptcha('forgotCaptchaDisplay'); return false;">🔄 Refresh</a>
+                    </div>
+                    <div class="form-group">
+                        <input type="text" id="forgotCaptchaInput" placeholder="Type the code above" required>
+                        <div id="forgotCaptchaError" class="error">Invalid Captcha code!</div>
+                    </div>
+
+                    <button type="submit" class="auth-btn" id="forgotBtn">Submit Reset Request</button>
+                    <div id="forgotStatus" class="status-msg"></div>
+
+                    <div class="auth-links">
+                        <a onclick="showAuthSection('loginSection')">← Back to Login</a>
+                    </div>
+                </form>
+            </div>
+
+        </div>
+    </div>
+
+
+    <header id="app-header" style="display: none;">
+        <div class="header-title">JCV STUDY HUB</div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <div class="timer-badge" id="timer">00:00</div>
+            <button class="logout-btn" onclick="logoutUser()">Logout</button>
+            <button class="hamburger" id="hamburger-btn" onclick="toggleDrawer()">☰</button>
+        </div>
+    </header>
+
+    <div id="nav-drawer">
+        <h3 style="text-align:center; color: var(--text-main); margin-top: 0; font-family: 'Poppins', sans-serif;">Question Map</h3>
+        <div class="nav-grid" id="nav-grid"></div>
+    </div>
+
+    <div class="container" id="course-container" style="display: none;">
+        <div class="page-header" id="course-header" style="display: none;">
+            <h2 class="page-title">Select Your Course</h2>
+            <p class="subtitle">Choose a course to explore subjects.</p>
+        </div>
+        <div id="course-buttons-wrapper" class="list-container">
+        </div>
+    </div>
+
+    <div class="container" id="subject-container" style="display: none;">
+        <button class="back-btn" onclick="showCourses()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Courses
+        </button>
+        <div class="page-header">
+            <h2 class="page-title" id="selected-course-title">Select Subject</h2>
+            <p class="subtitle">Choose a subject from this course.</p>
+        </div>
+        <div id="subject-buttons-wrapper" class="list-container"></div>
+    </div>
+
+    <div class="container" id="material-list-container" style="display: none;">
+        <button class="back-btn" onclick="showSubjects(currentCourse)">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Subjects
+        </button>
+        <div class="page-header">
+            <h2 class="page-title" id="material-subject-title">Study Material</h2>
+            <p class="subtitle">Select a document to view notes.</p>
+        </div>
+        
+        <div id="material-tiles-wrapper" class="test-list"></div>
+
+        <div class="bottom-actions" id="print-action-wrapper" style="display:none;">
+            <button class="btn" onclick="openPrintModal()">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                Print Course Material
+            </button>
+        </div>
+    </div>
+
+    <div class="container" id="material-content-container" style="display: none; background: transparent; border: none; box-shadow: none; padding-top: 10px;">
+        <div id="content-view">
+            <div class="breadcrumb">
+                <span class="breadcrumb-link" onclick="showMaterials(currentSubject)">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Documents
+                </span> 
+                <span style="color: #d1d5db;">/</span> 
+                <span id="breadcrumb-current" style="font-weight: 600; color: var(--text-main);"></span>
+            </div>
+            <div id="lesson-content"></div>
+        </div>
+    </div>
+
+    <div id="print-modal" class="hidden">
+        <div class="modal-overlay" onclick="closePrintModal()">
+            <div class="modal-content" onclick="event.stopPropagation()">
+                <h3>Select Documents to Print</h3>
+                <label class="checkbox-item select-all-container">
+                    <input type="checkbox" id="select-all-cb" onchange="toggleSelectAll(this)">
+                    Select All Documents
+                </label>
+                <div class="checkbox-list" id="print-options-list"></div>
+                <div class="modal-actions">
+                    <button class="btn" onclick="closePrintModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="executePrint()">Print Selected</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="print-container"></div>
+
+
+    <div class="container" id="quiz-list-container" style="display: none;">
+        <button class="back-btn" onclick="showSubjects(currentCourse)">
+            <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Subjects
+        </button>
+        <div class="page-header">
+            <h2 class="page-title" id="selected-subject-title">Available Tests</h2>
+            <p class="subtitle">Select a test below to begin your practice.</p>
+        </div>
+        <div id="dashboard-wrapper"></div>
+    </div>
+
+    <div class="container" id="instructions-container" style="display: none;">
+        <div class="page-header">
+            <h2 class="page-title">Test Instructions</h2>
+            <p class="subtitle" id="instruction-test-title"></p>
+        </div>
+        <div class="instructions-card">
+            <h3><span>💡</span> Please read carefully before starting:</h3>
+            <ul>
+                <li><strong>Time Limit:</strong> You will get exactly <b>1 minute</b> per question. The timer will run automatically.</li>
+                <li><strong>Navigation:</strong> Use the Next/Previous buttons, or click the <b>Question Map (☰)</b> in the top right to jump between questions.</li>
+                <li><strong>Color Codes:</strong> <span style="color: #10b981; font-weight: bold;">Green</span> means attempted, <span style="color: #ef4444; font-weight: bold;">Red</span> means viewed but unanswered.</li>
+                <li><strong>Submission:</strong> Navigate to the final question and click <b>Submit Test</b> to view your immediate score. Do not close or refresh the page during the test.</li>
+            </ul>
+        </div>
+        <div class="terms-container">
+            <input type="checkbox" id="agree-terms" class="terms-checkbox" onchange="toggleStartBtn()">
+            <label for="agree-terms" class="terms-label">I have read and understood the instructions. I agree to the terms and conditions.</label>
+        </div>
+        <div class="score-buttons" style="justify-content: flex-start; margin-top: 0;">
+            <button class="score-btn" onclick="cancelInstructions()">Cancel</button>
+            <button class="score-btn primary" id="confirm-start-btn" onclick="beginTest()" disabled>Start Test</button>
+        </div>
+    </div>
+
+    <div class="container" id="quiz-app-container" style="display: none;">
+        <div id="quiz-content" class="question-card">
+            <h3 id="quiz-title"><span style="font-size: 1.2rem; margin-right: 8px;">📝</span> <span id="quiz-title-text"></span></h3>
+            <div class="question-text" id="question-text">Loading Question...</div>
+            <div class="options-list" id="options-container"></div>
+            
+            <div id="score-card">
+                <h2>Test Completed!</h2>
+                <p style="font-size: 2.5rem; font-weight:700; margin: 15px 0; color: var(--primary);">
+                    <span id="final-score">0</span> / <span id="total-score">0</span>
+                </p>
+                <div class="score-buttons">
+                    <button class="score-btn" onclick="showTests(currentSubject)">Back to Tests</button>
+                    <button class="score-btn primary" onclick="retryQuiz()">Retake Test</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer id="quiz-footer">
+        <button class="nav-btn" id="prev-btn" onclick="changeQuestion(-1)">Previous</button>
+        <button class="nav-btn" id="next-btn" onclick="changeQuestion(1)">Next</button>
+    </footer>
+
+    <!-- ADDED BOTTOM TAB BAR -->
+    <nav id="bottom-tab-bar" style="display: none;">
+        <button class="tab-btn active" id="tab-material" onclick="switchTab('MATERIAL')">
+            <span class="tab-icon">📚</span>
+            <span>Study Material</span>
+        </button>
+        <button class="tab-btn" id="tab-test" onclick="switchTab('TEST')">
+            <span class="tab-icon">✍️</span>
+            <span>Practice Tests</span>
+        </button>
+    </nav>
+
+    <script>
+        // ==========================================
+        // SYSTEM CONFIGURATION
+        // ==========================================
+
+        // 1. User Auth Configuration
+        const USER_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRgXfbwynctGOuYhJZPbW9UAbip3S2cqZuNUbiFg72oVFZkc3Ppu-LMD1UVGVZuK5_0qypgYcYTPbup/pub?gid=1434285869&single=true&output=csv";
+        const MOBILE_COLUMN_INDEX = 2;   
+        const PASSWORD_COLUMN_INDEX = 4; 
+        const COURSES_COLUMN_INDEX = 5;  
+
+        const REG_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSfZe4sl5r5f5pj_LvxjhWR-Nx3sNuB0zUQER6657-zQLC8wFg/formResponse";
+        const REG_ENTRY_NAME = "entry.439313057";
+        const REG_ENTRY_MOBILE = "entry.868910745";
+        const REG_ENTRY_MAIL = "entry.660096705";
+        const REG_ENTRY_PASS = "entry.779278654";
+
+        const FORGOT_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdyr-TdglqeqBBFARy2k0BJo1uI3kq7OeOu7_2_CxpE3dKsGA/formResponse";
+        const FORGOT_ENTRY_MOBILE = "entry.1592422965";
+        const FORGOT_ENTRY_NEWPASS = "entry.1493247852";
+
+        // 2. Database Configurations
+        const QUIZ_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQCGXSbQeeL0UjbaDOFtUqHcssUm2WD9afr0cJkXQ-c2AFf8ZPQyaW9JeAHc3IRBDGIpr72Fb9XnLL4/pub?gid=0&single=true&output=csv";
+        const MATERIAL_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQLVtFvH49GCmBPgCKhd4J-413rtz-_g_6cGMgqRFpIUWLp12KM6T5Y7Jh4HOGDTYYuM6jMzgRL1gzt/pub?gid=0&single=true&output=csv";        
+        
+        // Memory & States
+        const fallbackMemory = {};
+        const safeStorage = {
+            getItem: function(key) { try { return localStorage.getItem(key); } catch(e) { return fallbackMemory[key] || null; } },
+            setItem: function(key, value) { try { localStorage.setItem(key, value); } catch(e) { fallbackMemory[key] = value; } }
+        };
+
+        // Global User Session Data
+        let ALLOWED_COURSE_SUBJECTS = []; 
+        let allowedMappings = [];
+
+        // Global Data Storage
+        let quizConfig = [];    
+        let quizData = [];
+        let materialConfig = []; 
+
+        let currentTabMode = 'MATERIAL'; // ADDED: State for active tab
+        let currentCourse = "";
+        let currentSubject = "";
+        let pendingTestName = null;
+        let activeQuizIndex = null;
+        
+        let currentQuestion = 0;
+        let userAnswers = [];
+        let visitedQuestions = [];
+        let isSubmitted = false;
+        let totalSeconds = 0; 
+        let timerInterval;
+
+        const MOTIVATIONAL_QUOTES = [
+            "Education is the most powerful weapon which you can use to change the world.",
+            "The beautiful thing about learning is that no one can take it away from you.",
+            "Success is the sum of small efforts, repeated day in and day out.",
+            "Believe you can and you're halfway there.",
+            "The expert in anything was once a beginner."
+        ];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            generateCaptcha('loginCaptchaDisplay');
+            generateCaptcha('regCaptchaDisplay');
+            generateCaptcha('forgotCaptchaDisplay');
+        });
+
+        // ==========================================
+        // TAB SWITCHING LOGIC
+        // ==========================================
+        function switchTab(mode) {
+            if (currentTabMode === mode) return; 
+            currentTabMode = mode;
+            document.getElementById('tab-material').classList.toggle('active', mode === 'MATERIAL');
+            document.getElementById('tab-test').classList.toggle('active', mode === 'TEST');
+            renderCourses(); 
+        }
+
+        // ==========================================
+        // AUTHENTICATION LOGIC
+        // ==========================================
+
+        function showAuthSection(sectionId) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('registerSection').style.display = 'none';
+            document.getElementById('forgotSection').style.display = 'none';
+            document.getElementById(sectionId).style.display = 'block';
+            hideStatusMessages();
+            if(sectionId === 'loginSection') generateCaptcha('loginCaptchaDisplay');
+            if(sectionId === 'registerSection') generateCaptcha('regCaptchaDisplay');
+            if(sectionId === 'forgotSection') generateCaptcha('forgotCaptchaDisplay');
+        }
+
+        function generateCaptcha(elementId) {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let captcha = '';
+            for (let i = 0; i < 5; i++) { captcha += chars.charAt(Math.floor(Math.random() * chars.length)); }
+            document.getElementById(elementId).innerText = captcha; return captcha;
+        }
+
+        function toggleFormState(formId, disable) {
+            const form = document.getElementById(formId); const elements = form.elements;
+            for (let i = 0; i < elements.length; i++) { elements[i].disabled = disable; }
+            const refreshLinks = form.querySelectorAll('a[id$="Refresh"]');
+            refreshLinks.forEach(link => { link.style.pointerEvents = disable ? "none" : "auto"; link.style.opacity = disable ? "0.5" : "1"; });
+        }
+
+        function setStatus(elementId, message, type) {
+            const el = document.getElementById(elementId);
+            el.innerText = message; el.style.display = 'block'; el.className = `status-msg status-${type}`;
+        }
+
+        function hideStatusMessages() {
+            document.getElementById('loginStatus').style.display = 'none';
+            document.getElementById('regStatus').style.display = 'none';
+            document.getElementById('forgotStatus').style.display = 'none';
+        }
+
+        async function handleRegister(e) { /* existing logic */ }
+        function handleForgot(e) { /* existing logic */ }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            document.getElementById('loginError').style.display = 'none'; hideStatusMessages();
+            
+            const captchaInput = document.getElementById('loginCaptchaInput').value;
+            const captchaActual = document.getElementById('loginCaptchaDisplay').innerText;
+
+            if (captchaInput !== captchaActual) {
+                document.getElementById('loginError').style.display = 'block';
+                generateCaptcha('loginCaptchaDisplay'); return;
+            }
+
+            const mobile = document.getElementById('loginMobile').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+
+            toggleFormState('loginForm', true); setStatus('loginStatus', 'Authenticating...', 'loading');
+
+            try {
+                const response = await fetch(USER_SHEET_CSV_URL);
+                if (!response.ok) throw new Error("Network error");
+                const csvText = await response.text();
+                
+                const results = Papa.parse(csvText, { skipEmptyLines: true });
+                const rows = results.data;
+                let loginSuccessful = false; let rawAllowedCourses = "";
+
+                for (let i = 1; i < rows.length; i++) {
+                    const columns = rows[i]; 
+                    if (columns.length > Math.max(MOBILE_COLUMN_INDEX, PASSWORD_COLUMN_INDEX)) {
+                        const rowMobile = columns[MOBILE_COLUMN_INDEX] ? columns[MOBILE_COLUMN_INDEX].trim() : "";
+                        const rowPassword = columns[PASSWORD_COLUMN_INDEX] ? columns[PASSWORD_COLUMN_INDEX].trim() : "";
+                        if (rowMobile === mobile && rowPassword === password) {
+                            loginSuccessful = true;
+                            if(columns.length > COURSES_COLUMN_INDEX) { rawAllowedCourses = columns[COURSES_COLUMN_INDEX] ? columns[COURSES_COLUMN_INDEX].trim() : ""; }
+                            break; 
+                        }
+                    }
+                }
+
+                if (loginSuccessful) {
+                    setStatus('loginStatus', 'Login Successful!', 'success');
+                    ALLOWED_COURSE_SUBJECTS = rawAllowedCourses ? rawAllowedCourses.split(',').map(s => s.trim()).filter(Boolean) : [];
+                    allowedMappings = ALLOWED_COURSE_SUBJECTS.map(str => {
+                        const separatorIdx = str.indexOf('-');
+                        if(separatorIdx === -1) return { course: str.trim().toUpperCase(), subject: null };
+                        return { course: str.substring(0, separatorIdx).trim().toUpperCase(), subject: str.substring(separatorIdx + 1).trim().toUpperCase() };
+                    });
+                    setTimeout(() => { startPortalEngine(); }, 1000);
+                } else {
+                    setStatus('loginStatus', 'Invalid Mobile Number or Password!', 'error');
+                    toggleFormState('loginForm', false); generateCaptcha('loginCaptchaDisplay'); 
+                }
+            } catch (err) {
+                console.error(err); setStatus('loginStatus', 'Database connection error.', 'error');
+                toggleFormState('loginForm', false);
+            }
+        }
+
+        function logoutUser() {
+            ALLOWED_COURSE_SUBJECTS = []; allowedMappings = [];
+            quizConfig = []; materialConfig = [];
+            hideAllAppContainers();
+            document.getElementById('app-watermark').style.display = 'none';
+            document.getElementById('app-header').style.display = 'none';
+            document.getElementById('auth-wrapper').style.display = 'flex';
+            document.getElementById('loginForm').reset();
+            toggleFormState('loginForm', false); generateCaptcha('loginCaptchaDisplay'); hideStatusMessages();
+        }
+
+        // ==========================================
+        // PORTAL ENGINE & DATA FETCHING
+        // ==========================================
+
+        function showQuoteUI() {
+            document.getElementById('auth-wrapper').style.display = 'none';
+            document.getElementById('app-header').style.display = 'flex';
+            document.getElementById('course-container').style.display = 'block';
+            document.getElementById('course-header').style.display = 'none';
+
+            const wrapper = document.getElementById('course-buttons-wrapper');
+            const randomQuote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
+            wrapper.innerHTML = `
+                <div class="quote-card">
+                    <span class="quote-icon">💡</span>
+                    <div class="quote-text">"${randomQuote}"</div>
+                    <div style="margin-top: 20px; font-size:0.9rem; color:var(--text-muted);">Preparing your personalized curriculum...</div>
+                </div>
+            `;
+        }
+
+        function isMappingAllowed(c, s) {
+            if (ALLOWED_COURSE_SUBJECTS.length === 0) return false; 
+            return allowedMappings.some(m => m.course === c.toUpperCase() && (!m.subject || m.subject === s.toUpperCase()));
+        }
+
+        async function startPortalEngine() {
+            showQuoteUI();
+            
+            try {
+                const [quizRes, materialRes] = await Promise.all([
+                    fetch(QUIZ_SHEET_CSV_URL),
+                    fetch(MATERIAL_SHEET_CSV_URL) 
+                ]);
+
+                if (quizRes.ok) {
+                    const quizText = await quizRes.text();
+                    Papa.parse(quizText, { header: true, skipEmptyLines: true, complete: (res) => processQuizCSV(res.data) });
+                }
+
+                if (materialRes.ok) {
+                    const matText = await materialRes.text();
+                    Papa.parse(matText, { header: true, skipEmptyLines: true, complete: (res) => processMaterialCSV(res.data) });
+                }
+
+                setTimeout(() => { renderCourses(); }, 2000);
+
+            } catch (err) {
+                console.error("Data Fetching Error:", err);
+                document.getElementById('course-buttons-wrapper').innerHTML = `<div class="status-message status-error">Failed to load Curriculum data.</div>`;
+            }
+        }
+
+
+        function processQuizCSV(rows) {
+            let tempQuizMap = {};
+            rows.forEach(row => {
+                const getVal = (field) => { const k = Object.keys(row).find(k => k.toLowerCase().trim() === field.toLowerCase().trim()); return k ? row[k].trim() : ''; };
+                const testName = getVal('test name'); const questionText = getVal('Question');
+                let parsedCourses = getVal('Course') ? getVal('Course').split(',').map(c => c.trim()).filter(Boolean) : ['General Course'];
+                let parsedSubjects = (getVal('Subject') || getVal('Class')) ? (getVal('Subject') || getVal('Class')).split(',').map(s => s.trim()).filter(Boolean) : ['General Subject'];
+
+                if (!testName) return; 
+                if (!tempQuizMap[testName]) tempQuizMap[testName] = { mappings: [], questions: [] };
+
+                parsedCourses.forEach(c => {
+                    parsedSubjects.forEach(s => {
+                        if(isMappingAllowed(c, s) && !tempQuizMap[testName].mappings.some(m => m.course === c && m.subject === s)) {
+                            tempQuizMap[testName].mappings.push({ course: c, subject: s });
+                        }
+                    });
+                });
+
+                if (questionText) {
+                    tempQuizMap[testName].questions.push({
+                        question: questionText, options: [getVal('Option A'), getVal('Option B'), getVal('Option C'), getVal('Option d') || getVal('Option D')].filter(val => val !== ''), 
+                        correctIndex: parseInt(getVal('Correct answer index') || 0, 10)
+                    });
+                }
+            });
+
+            quizConfig = Object.keys(tempQuizMap).filter(title => tempQuizMap[title].mappings.length > 0) 
+                .map((title, index) => ({ id: index + 1, title: title, mappings: tempQuizMap[title].mappings, qCount: tempQuizMap[title].questions.length, fullData: tempQuizMap[title] }));
+        }
+
+        function processMaterialCSV(rows) {
+            materialConfig = [];
+            let lastCourse = 'General Course'; 
+            let lastSubject = 'General Subject'; 
+            let lastLesson = 'Unnamed Lesson';
+            
+            rows.forEach(row => {
+                const getVal = (field) => { 
+                    const k = Object.keys(row).find(k => k.toLowerCase().trim() === field.toLowerCase().trim()); 
+                    return k ? row[k].trim() : ''; 
+                };
+                
+                const rawCourse = getVal('Course');
+                const rawSubject = getVal('Subject') || getVal('Class');
+                const rawLesson = getVal('Lesson Name') || getVal('Lesson');
+                const topic = getVal('Topic');
+                const content = getVal('Content');
+
+                if (rawCourse) lastCourse = rawCourse;
+                if (rawSubject) lastSubject = rawSubject;
+                if (rawLesson) lastLesson = rawLesson;
+                
+                const activeCourses = lastCourse.split(',').map(c => c.trim());
+                const activeSubjects = lastSubject.split(',').map(s => s.trim());
+
+                if (topic && content) {
+                    activeCourses.forEach(c => {
+                        activeSubjects.forEach(s => {
+                            if (isMappingAllowed(c, s)) {
+                                materialConfig.push({ course: c, subject: s, lessonName: lastLesson, topic: topic, content: content });
+                            }
+                        });
+                    });
+                }
+            });
+        }
+
+        // ==========================================
+        // UI NAVIGATION & RENDERERS
+        // ==========================================
+
+        function hideAllAppContainers() {
+            document.getElementById('course-container').style.display = 'none';
+            document.getElementById('subject-container').style.display = 'none';
+            document.getElementById('quiz-list-container').style.display = 'none';
+            document.getElementById('instructions-container').style.display = 'none';
+            document.getElementById('quiz-app-container').style.display = 'none';
+            document.getElementById('material-list-container').style.display = 'none';
+            document.getElementById('material-content-container').style.display = 'none';
+            
+            document.getElementById('quiz-footer').style.display = 'none';
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('hamburger-btn').style.display = 'none';
+            document.getElementById('nav-drawer').classList.remove('open');
+            document.getElementById('app-watermark').style.display = 'none';
+            document.getElementById('bottom-tab-bar').style.display = 'none'; // ADDED
+            clearInterval(timerInterval);
+        }
+
+        // --- LEVEL 1: COURSES ---
+        function renderCourses() {
+            hideAllAppContainers();
+            document.getElementById('course-container').style.display = 'block';
+            document.getElementById('course-header').style.display = 'block';
+            document.getElementById('bottom-tab-bar').style.display = 'flex'; // ADDED
+
+            const courseWrapper = document.getElementById('course-buttons-wrapper');
+            courseWrapper.innerHTML = '';
+
+            let targetCourses = [];
+            if (currentTabMode === 'MATERIAL') {
+                targetCourses = materialConfig.map(m => m.course);
+            } else {
+                targetCourses = quizConfig.flatMap(q => q.mappings.map(m => m.course));
+            }
+            const uniqueCourses = [...new Set(targetCourses)].sort();
+
+            if(uniqueCourses.length === 0) {
+                courseWrapper.innerHTML = `<div class="status-message status-error">No ${currentTabMode === 'MATERIAL' ? 'materials' : 'tests'} available for your profile.</div>`;
+                return;
+            }
+
+            uniqueCourses.forEach(cName => {
+                const btn = document.createElement('button');
+                btn.className = 'list-btn'; btn.innerText = cName;
+                btn.onclick = () => showSubjects(cName);
+                courseWrapper.appendChild(btn);
+            });
+        }
+        function showCourses() { renderCourses(); }
+
+        // --- LEVEL 2: SUBJECTS ---
+        function showSubjects(courseName) {
+            currentCourse = courseName;
+            hideAllAppContainers();
+            document.getElementById('subject-container').style.display = 'block';
+            document.getElementById('selected-course-title').innerText = `${courseName} Subjects`;
+            document.getElementById('bottom-tab-bar').style.display = 'flex'; // ADDED
+
+            const subjectWrapper = document.getElementById('subject-buttons-wrapper');
+            subjectWrapper.innerHTML = '';
+
+            let targetSubjects = [];
+            if (currentTabMode === 'MATERIAL') {
+                targetSubjects = materialConfig.filter(m => m.course === courseName).map(m => m.subject);
+            } else {
+                targetSubjects = quizConfig.flatMap(q => q.mappings.filter(m => m.course === courseName).map(m => m.subject));
+            }
+            const uniqueSubjects = [...new Set(targetSubjects)].sort();
+
+            if (uniqueSubjects.length === 0) { subjectWrapper.innerHTML = `<div class="status-message">No subjects available.</div>`; return; }
+
+            uniqueSubjects.forEach(sName => {
+                const btn = document.createElement('button'); btn.className = 'list-btn'; btn.innerText = sName;
+                btn.onclick = () => {
+                    if (currentTabMode === 'MATERIAL') showMaterials(sName);
+                    else showTests(sName);
+                };
+                subjectWrapper.appendChild(btn);
+            });
+        }
+
+        // ==========================================
+        // BRANCH A: STUDY MATERIAL UI LOGIC
+        // ==========================================
+
+        function showMaterials(subjectName) {
+            currentSubject = subjectName;
+            hideAllAppContainers();
+            document.getElementById('app-watermark').style.display = 'block';
+            document.getElementById('material-list-container').style.display = 'block';
+            document.getElementById('bottom-tab-bar').style.display = 'flex'; // ADDED
+            document.getElementById('material-subject-title').innerText = `${subjectName} Material`;
+
+            const wrapper = document.getElementById('material-tiles-wrapper');
+            wrapper.innerHTML = '';
+
+            const subjectMaterials = materialConfig.filter(m => m.course === currentCourse && m.subject === currentSubject);
+            const uniqueLessons = [...new Set(subjectMaterials.map(m => m.lessonName))];
+
+            if (uniqueLessons.length === 0) {
+                wrapper.innerHTML = `<div class="status-message">No study material uploaded yet.</div>`;
+                document.getElementById('print-action-wrapper').style.display = 'none';
+            } else {
+                document.getElementById('print-action-wrapper').style.display = 'flex';
+                uniqueLessons.forEach(lesson => {
+                    const tile = document.createElement('div'); tile.className = 'tile';
+                    tile.innerHTML = `
+                        <div class="doc-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></div>
+                        <div class="tile-title">${lesson}</div>
+                        <div class="tile-chevron"><svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg></div>
+                    `;
+                    tile.onclick = () => showContentView(lesson);
+                    wrapper.appendChild(tile);
+                });
+            }
+        }
+
+        function showContentView(selectedLesson) {
+            hideAllAppContainers();
+            document.getElementById('app-watermark').style.display = 'block';
+            document.getElementById('material-content-container').style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            document.getElementById('breadcrumb-current').textContent = selectedLesson;
+            const contentContainer = document.getElementById('lesson-content');
+            
+            const lessonData = materialConfig.filter(m => m.course === currentCourse && m.subject === currentSubject && m.lessonName === selectedLesson);
+
+            contentContainer.innerHTML = lessonData.map(item => `
+                <div class="topic-section">
+                    <h3>${item.topic}</h3>
+                    <div class="content-body">${item.content}</div>
+                </div>
+            `).join('');
+        }
+
+        /* --- Print Functionality --- */
+        function openPrintModal() {
+            const subjectMaterials = materialConfig.filter(m => m.course === currentCourse && m.subject === currentSubject);
+            const uniqueLessons = [...new Set(subjectMaterials.map(m => m.lessonName))];
+            if (uniqueLessons.length === 0) return; 
+            
+            const listContainer = document.getElementById('print-options-list');
+            listContainer.innerHTML = uniqueLessons.map(lesson => `
+                <label class="checkbox-item">
+                    <input type="checkbox" class="print-lesson-cb" value="${lesson}" onchange="checkSelectAllStatus()">
+                    <svg width="20" height="20" fill="var(--doc-color)" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                    ${lesson}
+                </label>
+            `).join('');
+            
+            document.getElementById('select-all-cb').checked = false;
+            document.getElementById('print-modal').classList.remove('hidden');
+        }
+
+        function closePrintModal() { document.getElementById('print-modal').classList.add('hidden'); }
+        function toggleSelectAll(sa) { document.querySelectorAll('.print-lesson-cb').forEach(cb => cb.checked = sa.checked); }
+        function checkSelectAllStatus() { document.getElementById('select-all-cb').checked = (document.querySelectorAll('.print-lesson-cb').length === document.querySelectorAll('.print-lesson-cb:checked').length); }
+
+        function executePrint() {
+            const selectedLessons = Array.from(document.querySelectorAll('.print-lesson-cb:checked')).map(cb => cb.value);
+            if (selectedLessons.length === 0) { alert("Please select at least one document."); return; }
+
+            const printContainer = document.getElementById('print-container');
+            let printHTML = '';
+
+            selectedLessons.forEach(lessonName => {
+                const lessonData = materialConfig.filter(m => m.course === currentCourse && m.subject === currentSubject && m.lessonName === lessonName);
+                printHTML += `<div class="print-lesson"><h2>${lessonName}</h2>`;
+                lessonData.forEach(item => { printHTML += `<div class="print-topic"><h3>${item.topic}</h3><div class="print-content">${item.content}</div></div>`; });
+                printHTML += `</div>`;
+            });
+
+            printContainer.innerHTML = printHTML;
+            closePrintModal(); window.print();
+            setTimeout(() => { printContainer.innerHTML = ''; }, 1000);
+        }
+
+        // ==========================================
+        // BRANCH B: TESTS UI LOGIC
+        // ==========================================
+
+        function showTests(subjectName) {
+            currentSubject = subjectName;
+            hideAllAppContainers();
+            document.getElementById('quiz-list-container').style.display = 'block';
+            document.getElementById('bottom-tab-bar').style.display = 'flex'; // ADDED
+            document.getElementById('selected-subject-title').innerText = `${subjectName} Tests`;
+
+            const wrapper = document.getElementById('dashboard-wrapper'); wrapper.innerHTML = '';
+            const filteredQuizzes = quizConfig.filter(q => q.mappings.some(m => m.course === currentCourse && m.subject === currentSubject));
+
+            if (filteredQuizzes.length === 0) {
+                wrapper.innerHTML = `<div class="status-message">No tests available.</div>`;
+            } else {
+                let listHTML = '';
+                filteredQuizzes.forEach((quiz) => {
+                    const savedScore = safeStorage.getItem(`quiz_score_${quiz.id}`);
+                    let scoreDisplay = savedScore ? `<span class="score-display">Score: ${savedScore}</span>` : ``;
+                    let btnText = "Start"; let btnClass = "take-test-btn primary-action"; let disabledAttr = "";
+                    if (quiz.qCount === 0) { btnText = "Soon"; btnClass = "take-test-btn"; disabledAttr = "disabled"; } else if (savedScore) { btnText = "Retake"; btnClass = "take-test-btn"; }
+                    const timeString = quiz.qCount > 0 ? `${quiz.qCount} mins` : '--';
+
+                    listHTML += `
+                        <div class="test-card">
+                            <div class="test-icon">📝</div>
+                            <div class="test-content">
+                                <h4 class="test-title">${quiz.title}</h4>
+                                <div class="test-meta">
+                                    <span class="meta-item"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg> ${quiz.qCount} Qs</span>
+                                    <span style="color: #d1d5db;">•</span>
+                                    <span class="meta-item"><svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> ${timeString}</span>
+                                </div>
+                            </div>
+                            <div class="test-action">${scoreDisplay}<button class="${btnClass}" ${disabledAttr} onclick="showInstructions('${quiz.title}')">${btnText}</button></div>
+                        </div>`;
+                });
+                wrapper.innerHTML = `<div class="test-list">${listHTML}</div>`;
+            }
+        }
+
+        function showInstructions(testName) {
+            pendingTestName = testName; hideAllAppContainers();
+            document.getElementById('instructions-container').style.display = 'block';
+            document.getElementById('instruction-test-title').innerText = `Selected Test: ${testName}`;
+            document.getElementById('agree-terms').checked = false; document.getElementById('confirm-start-btn').disabled = true; window.scrollTo(0,0);
+        }
+        function toggleStartBtn() { document.getElementById('confirm-start-btn').disabled = !document.getElementById('agree-terms').checked; }
+        function cancelInstructions() { pendingTestName = null; showTests(currentSubject); }
+        function beginTest() { startQuiz(pendingTestName); }
+
+        function startQuiz(testName) {
+            const chosenQuizIndex = quizConfig.findIndex(q => q.title === testName);
+            activeQuizIndex = chosenQuizIndex; quizData = quizConfig[chosenQuizIndex].fullData.questions;
+
+            hideAllAppContainers();
+            document.getElementById('quiz-app-container').style.display = 'block';
+            document.getElementById('quiz-footer').style.display = 'flex';
+            document.getElementById('timer').style.display = 'block';
+            document.getElementById('hamburger-btn').style.display = 'block';
+            document.getElementById('score-card').style.display = 'none';
+            document.getElementById('quiz-title-text').innerText = testName;
+
+            currentQuestion = 0; userAnswers = new Array(quizData.length).fill(null);
+            visitedQuestions = new Array(quizData.length).fill(false);
+            isSubmitted = false; visitedQuestions[0] = true;
+            totalSeconds = quizData.length * 60; 
+
+            renderNavGrid(); startTimer(); loadQuestion(0);
+        }
+
+        function retryQuiz() { showInstructions(quizConfig[activeQuizIndex].title); }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if(totalSeconds > 0 && !isSubmitted) {
+                    totalSeconds--; const m = Math.floor(totalSeconds / 60).toString().padStart(2,'0'); const s = (totalSeconds % 60).toString().padStart(2,'0');
+                    document.getElementById('timer').innerText = `${m}:${s}`; if(totalSeconds === 0) submitQuiz();
+                }
+            }, 1000);
+        }
+
+        function loadQuestion(index) {
+            const data = quizData[index]; const labels = ['A', 'B', 'C', 'D'];
+            document.getElementById('question-text').innerHTML = `<strong>Q${index + 1}.</strong> ${data.question}`;
+            const optionsContainer = document.getElementById('options-container'); optionsContainer.innerHTML = '';
+
+            data.options.forEach((opt, i) => {
+                const btn = document.createElement('div'); btn.className = 'option-card';
+                if (userAnswers[index] === i) btn.classList.add('selected');
+                if (isSubmitted) {
+                    btn.classList.add('disabled'); btn.style.cursor = 'default';
+                    if (i === data.correctIndex) btn.classList.add('correct-answer'); else if (userAnswers[index] === i) btn.classList.add('wrong-selected');
+                } else { btn.onclick = () => { userAnswers[currentQuestion] = i; loadQuestion(currentQuestion); renderNavGrid(); }; }
+                btn.innerHTML = `<div class="option-badge">${labels[i]}</div><div class="option-text">${opt}</div>`; optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('prev-btn').disabled = index === 0; const nextBtn = document.getElementById('next-btn');
+            if (index === quizData.length - 1) { nextBtn.innerText = isSubmitted ? "View Results" : "Submit Test"; nextBtn.onclick = isSubmitted ? () => document.getElementById('score-card').scrollIntoView({behavior: 'smooth'}) : submitQuiz; } 
+            else { nextBtn.innerText = "Next Question"; nextBtn.onclick = () => changeQuestion(1); }
+            if (window.MathJax && typeof MathJax.typesetPromise === 'function') { MathJax.typesetPromise([document.getElementById('quiz-content')]).catch(err => console.log("MathJax error:", err)); }
+        }
+
+        function changeQuestion(dir) { currentQuestion += dir; visitedQuestions[currentQuestion] = true; loadQuestion(currentQuestion); renderNavGrid(); }
+
+        function submitQuiz() {
+            let score = 0; userAnswers.forEach((ans, i) => { if(ans === quizData[i].correctIndex) score++; });
+            isSubmitted = true; clearInterval(timerInterval);
+            safeStorage.setItem(`quiz_score_${quizConfig[activeQuizIndex].id}`, `${score} / ${quizData.length}`);
+            document.getElementById('final-score').innerText = score; document.getElementById('total-score').innerText = quizData.length;
+            document.getElementById('score-card').style.display = 'block'; document.getElementById('score-card').scrollIntoView({ behavior: 'smooth' });
+            loadQuestion(currentQuestion); renderNavGrid();
+        }
+
+        function renderNavGrid() {
+            const grid = document.getElementById('nav-grid'); grid.innerHTML = '';
+            quizData.forEach((_, i) => {
+                const item = document.createElement('div'); item.className = `nav-item ${i === currentQuestion ? 'current' : ''}`;
+                if (userAnswers[i] !== null) item.classList.add('attempted'); else if (visitedQuestions[i]) item.classList.add('viewed-unanswered');
+                item.innerText = i + 1; item.onclick = () => { currentQuestion = i; visitedQuestions[i] = true; loadQuestion(i); toggleDrawer(); }; grid.appendChild(item);
+            });
+        }
+
+        function toggleDrawer() { document.getElementById('nav-drawer').classList.toggle('open'); }
+
+        // ==========================================
+        // FOOLPROOF HARDWARE BACK BUTTON INTERCEPTOR
+        // ==========================================
+        (function setupHardwareBackButton() {
+            function pushAppState() {
+                window.history.pushState({ isApp: true }, "", window.location.pathname + window.location.search + "#hub");
+            }
+
+            pushAppState();
+
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('button, .list-btn, .action-card, .tile, .breadcrumb-link, .nav-item, .option-card')) {
+                    const isLoggedIn = document.getElementById('auth-wrapper').style.display === 'none';
+                    if (isLoggedIn) {
+                        pushAppState();
+                    }
+                }
+            });
+
+            window.addEventListener('popstate', function(event) {
+                const isLoggedIn = document.getElementById('auth-wrapper').style.display === 'none';
+
+                if (isLoggedIn) {
+                    setTimeout(pushAppState, 10);
+                } else {
+                    return;
+                }
+
+                if (document.getElementById('nav-drawer').classList.contains('open')) {
+                    toggleDrawer();
+                    return;
+                }
+                if (!document.getElementById('print-modal').classList.contains('hidden')) {
+                    closePrintModal();
+                    return;
+                }
+
+                if (document.getElementById('quiz-app-container').style.display === 'block') {
+                    clearInterval(timerInterval); 
+                    showTests(currentSubject);
+                } else if (document.getElementById('instructions-container').style.display === 'block') {
+                    showTests(currentSubject);
+                } else if (document.getElementById('material-content-container').style.display === 'block') {
+                    showMaterials(currentSubject);
+                } else if (document.getElementById('material-list-container').style.display === 'block' || 
+                           document.getElementById('quiz-list-container').style.display === 'block') {
+                    showSubjects(currentCourse);
+                } else if (document.getElementById('subject-container').style.display === 'block') {
+                    renderCourses();
+                } else if (document.getElementById('course-container').style.display === 'block') {
+                    // STAYS IN COURSE TAB: Re-renders the page to ensure it stays locked in
+                    renderCourses();
+                }
+            });
+        })();
+
+    </script>
 </body>
 </html>
